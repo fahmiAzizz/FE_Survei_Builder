@@ -19,9 +19,12 @@ const survey = ref({
 const fetchSurvey = async () => {
   try {
     loading.value = true;
-    const res = await axios.get(`http://localhost:2001/survei/${surveyId}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    });
+    const res = await axios.get(
+      `https://be-survei-builder-dlkz.vercel.app/survei/${surveyId}`,
+      {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      }
+    );
 
     survey.value = {
       id: res.data.id,
@@ -177,9 +180,13 @@ const saveSurvey = async () => {
       })),
     };
 
-    await axios.put(`http://localhost:2001/survei/${surveyId}`, payload, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    });
+    await axios.put(
+      `https://be-survei-builder-dlkz.vercel.app/survei/${surveyId}`,
+      payload,
+      {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      }
+    );
 
     alert("✅ Survei berhasil diperbarui!");
     router.push(`/survei/${surveyId}`);

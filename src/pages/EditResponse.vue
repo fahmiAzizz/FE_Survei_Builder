@@ -19,12 +19,18 @@ const fetchData = async () => {
     loading.value = true;
 
     const [surveyRes, responseRes] = await Promise.all([
-      axios.get(`http://localhost:2001/survei/${surveiId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      }),
-      axios.get(`http://localhost:2001/survei/responseById/${responseId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      }),
+      axios.get(
+        `https://be-survei-builder-dlkz.vercel.app/survei/${surveiId}`,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      ),
+      axios.get(
+        `https://be-survei-builder-dlkz.vercel.app/survei/responseById/${responseId}`,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      ),
     ]);
 
     const formattedSurvey = {
@@ -104,7 +110,7 @@ const updateResponse = async () => {
     };
 
     await axios.put(
-      `http://localhost:2001/survei/response/edit/${responseId}`,
+      `https://be-survei-builder-dlkz.vercel.app/survei/response/edit/${responseId}`,
       payload,
       { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
     );

@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://localhost:2001",
+  baseURL: "https://be-survei-builder-dlkz.vercel.app",
   withCredentials: true,
 });
 

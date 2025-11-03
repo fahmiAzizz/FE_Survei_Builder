@@ -16,9 +16,12 @@ const showResponses = ref(false);
 const fetchSurvey = async () => {
   try {
     loading.value = true;
-    const res = await axios.get(`http://localhost:2001/survei/${surveyId}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    });
+    const res = await axios.get(
+      `https://be-survei-builder-dlkz.vercel.app/survei/${surveyId}`,
+      {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      }
+    );
 
     // ✅ Pastikan struktur SubQuestions masuk
     survey.value = {
@@ -37,7 +40,7 @@ const fetchResponses = async () => {
     showResponses.value = !showResponses.value;
     if (showResponses.value) {
       const res = await axios.get(
-        `http://localhost:2001/survei/response/${surveyId}`,
+        `https://be-survei-builder-dlkz.vercel.app/survei/response/${surveyId}`,
         {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         }
@@ -52,9 +55,12 @@ const fetchResponses = async () => {
 const deleteSurvey = async () => {
   if (confirm("Yakin ingin menghapus survei ini?")) {
     try {
-      await axios.delete(`http://localhost:2001/survei/${surveyId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
+      await axios.delete(
+        `https://be-survei-builder-dlkz.vercel.app/survei/${surveyId}`,
+        {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
       alert("✅ Survei berhasil dihapus!");
       router.push("/home");
     } catch (error) {
@@ -68,7 +74,7 @@ const convertToExcel = async () => {
   if (confirm("Konversi semua response survei ini ke Excel?")) {
     try {
       const res = await axios.post(
-        `http://localhost:2001/survei/response/convert/${surveyId}`,
+        `https://be-survei-builder-dlkz.vercel.app/survei/response/convert/${surveyId}`,
         {},
         {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
@@ -100,7 +106,7 @@ const deleteResponse = async (responseId) => {
   if (confirm("Yakin ingin menghapus response ini?")) {
     try {
       await axios.delete(
-        `http://localhost:2001/survei/response/delete/${responseId}`,
+        `https://be-survei-builder-dlkz.vercel.app/survei/response/delete/${responseId}`,
         {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         }

@@ -14,11 +14,14 @@ const surveiList = ref([]);
 const fetchSurvei = async () => {
   try {
     loading.value = true;
-    const res = await axios.get("http://localhost:2001/survei", {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
+    const res = await axios.get(
+      "https://be-survei-builder-dlkz.vercel.app/survei",
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
     surveiList.value = res.data;
   } catch (error) {
     console.error("Gagal mengambil survei:", error);

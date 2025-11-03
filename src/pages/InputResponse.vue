@@ -22,9 +22,12 @@ const answers = ref([]); // untuk semua sesi
 const fetchSurvey = async () => {
   try {
     loading.value = true;
-    const res = await axios.get(`http://localhost:2001/survei/${surveiId}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    });
+    const res = await axios.get(
+      `https://be-survei-builder-dlkz.vercel.app/survei/${surveiId}`,
+      {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      }
+    );
 
     const formattedSurvey = {
       id: res.data.id,
@@ -164,9 +167,13 @@ const submitResponse = async () => {
       answers: allAnswers,
     };
 
-    await axios.post("http://localhost:2001/survei/input", payload, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    });
+    await axios.post(
+      "https://be-survei-builder-dlkz.vercel.app/survei/input",
+      payload,
+      {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      }
+    );
 
     alert("Respon survei berhasil dikirim!");
     router.push(`/survei/${surveiId}`);

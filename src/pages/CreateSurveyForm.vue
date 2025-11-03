@@ -115,9 +115,13 @@ const duplicateQuestion = (sessionIndex, questionIndex) => {
 
 const createSurvey = async () => {
   try {
-    const res = await axios.post("http://localhost:2001/survei", form.value, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    });
+    const res = await axios.post(
+      "https://be-survei-builder-dlkz.vercel.app/survei",
+      form.value,
+      {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      }
+    );
     alert("Survei berhasil dibuat!");
     emit("created", res.data);
   } catch (err) {
