@@ -9,28 +9,33 @@
           type="text"
           placeholder="Name"
           class="w-full border p-2 rounded mb-3"
+          required
         />
         <input
           v-model="form.email"
           type="email"
           placeholder="Email"
           class="w-full border p-2 rounded mb-3"
+          required
         />
         <input
           v-model="form.password"
           type="password"
           placeholder="Password"
           class="w-full border p-2 rounded mb-3"
+          required
         />
         <input
           v-model="form.confPassword"
           type="password"
           placeholder="Konfirmasi Password"
           class="w-full border p-2 rounded mb-3"
+          required
         />
         <select
           v-model="form.role"
           class="w-full border p-2 rounded mb-4 text-gray-700"
+          required
         >
           <option disabled value="">Pilih Role</option>
           <option value="creator">Admin</option>
@@ -58,6 +63,8 @@
 import { reactive } from "vue";
 import { useAuthStore } from "../store/auth";
 import { useRouter } from "vue-router";
+import Swal from "sweetalert2";
+import { showSuccess, showLoading, handleApiError } from "../utils/swal";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -72,12 +79,13 @@ const form = reactive({
 
 const handleRegister = async () => {
   try {
+    showLoading("Sedang memproses register...");
     await authStore.registerPeneliti(form);
-    alert("Registrasi berhasil! Silakan login.");
+    Swal.close();
+    await showSuccess("Registrasi Berhasil!");
     router.push("/login");
   } catch (error) {
-    console.error("Register error:", error);
-    alert("Registrasi gagal! Periksa kembali data Anda.");
+    handleApiError(error, "Login Gagal");
   }
 };
 </script>

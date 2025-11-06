@@ -3,7 +3,10 @@ import { ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import axios from "axios";
 import MainLayout from "../layout/MainLayout.vue";
+import Swal from "sweetalert2";
+import { showSuccess, showLoading, handleApiError } from "../utils/swal.js"; // pastikan path sesuai
 
+const apiUrl = import.meta.env.VITE_API_URL;
 const route = useRoute();
 const router = useRouter();
 const surveyId = route.params.id;
@@ -16,15 +19,15 @@ const survey = ref({
   sessions: [],
 });
 
+// 🧭 Fetch data survei
 const fetchSurvey = async () => {
   try {
     loading.value = true;
-    const res = await axios.get(
-      `https://be-survei-builder-dlkz.vercel.app/survei/${surveyId}`,
-      {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      }
-    );
+    showLoading("Memuat survei...");
+
+    const res = await axios.get(`${apiUrl}survei/${surveyId}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    });
 
     survey.value = {
       id: res.data.id,
@@ -64,14 +67,16 @@ const fetchSurvey = async () => {
         };
       }),
     };
+
+    Swal.close();
   } catch (err) {
-    console.error("Gagal memuat survei:", err);
+    handleApiError(err, "Gagal memuat survei");
   } finally {
     loading.value = false;
   }
 };
 
-// --- Semua fungsi di bawah ini tidak diubah sama sekali ---
+// ✏️ CRUD Session & Question
 const addSession = () => {
   survey.value.sessions.push({
     id: null,
@@ -82,6 +87,7 @@ const addSession = () => {
     questions: [],
   });
 };
+
 const removeSession = (sIndex) => {
   if (
     confirm(
@@ -91,6 +97,7 @@ const removeSession = (sIndex) => {
     survey.value.sessions.splice(sIndex, 1);
   }
 };
+
 const addQuestion = (session) => {
   session.questions.push({
     id: null,
@@ -104,6 +111,7 @@ const addQuestion = (session) => {
     subQuestions: [],
   });
 };
+
 const addSubQuestion = (question) => {
   question.subQuestions.push({
     id: null,
@@ -115,16 +123,19 @@ const addSubQuestion = (question) => {
     QuestionOptions: [],
   });
 };
+
 const addOption = (question) => {
   question.QuestionOptions.push({
     id: null,
-    question_id: question.id,
+    question_id: question.id || null,
     option_text: "",
   });
 };
+
 const removeOption = (question, index) => {
   question.QuestionOptions.splice(index, 1);
 };
+
 const removeQuestion = (session, qIndex) => {
   if (
     confirm("Yakin ingin menghapus pertanyaan ini beserta sub-pertanyaannya?")
@@ -132,11 +143,13 @@ const removeQuestion = (session, qIndex) => {
     session.questions.splice(qIndex, 1);
   }
 };
+
 const removeSubQuestion = (question, subIndex) => {
   if (confirm("Hapus sub-pertanyaan ini?")) {
     question.subQuestions.splice(subIndex, 1);
   }
 };
+
 const duplicateQuestion = (session, question) => {
   const clone = JSON.parse(JSON.stringify(question));
   clone.id = null;
@@ -149,8 +162,12 @@ const duplicateQuestion = (session, question) => {
   }));
   session.questions.push(clone);
 };
+
+// 💾 Simpan survei
 const saveSurvey = async () => {
   try {
+    showLoading("Menyimpan survei...");
+
     const payload = {
       name: survey.value.name,
       description: survey.value.description,
@@ -180,31 +197,38 @@ const saveSurvey = async () => {
       })),
     };
 
-    await axios.put(
-      `https://be-survei-builder-dlkz.vercel.app/survei/${surveyId}`,
-      payload,
-      {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      }
-    );
+    await axios.put(`${apiUrl}survei/${surveyId}`, payload, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    });
 
-    alert("✅ Survei berhasil diperbarui!");
+    Swal.close();
+    showSuccess("Berhasil!", "Survei berhasil diperbarui!");
     router.push(`/survei/${surveyId}`);
   } catch (err) {
-    console.error("❌ Gagal menyimpan survei:", err);
-    alert("Gagal menyimpan survei");
+    handleApiError(err, "Gagal menyimpan survei");
   }
 };
+
+const back = () => {
+  router.push(`/survei/${surveyId}`);
+};
+
 onMounted(fetchSurvey);
 </script>
 
 <template>
   <MainLayout>
-    <div class="p-8 bg-gray-50 min-h-screen">
-      <div class="max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow-lg">
-        <h1 class="text-2xl font-bold mb-6 text-gray-800">📝 Edit Survei</h1>
+    <div class="md:p-8 bg-gray-50 min-h-screen">
+      <div class="max-w-5xl mx-auto bg-white p-4 md:p-8 rounded-2xl shadow-lg">
+        <h1
+          class="text-2xl md:text-3xl font-bold mb-6 text-gray-800 text-center md:text-left"
+        >
+          📝 Edit Survei
+        </h1>
 
-        <div v-if="loading" class="text-gray-500">Memuat survei...</div>
+        <div v-if="loading" class="text-gray-500 text-center py-6">
+          Memuat survei...
+        </div>
 
         <div v-else>
           <!-- Nama & Deskripsi -->
@@ -226,6 +250,7 @@ onMounted(fetchSurvey);
               <textarea
                 v-model="survey.description"
                 class="w-full border rounded-lg p-2.5 focus:ring focus:ring-blue-200"
+                rows="3"
               ></textarea>
             </div>
           </div>
@@ -234,13 +259,18 @@ onMounted(fetchSurvey);
           <div
             v-for="(session, sIndex) in survey.sessions"
             :key="sIndex"
-            class="border rounded-xl p-5 mb-6 bg-gray-50 shadow-sm"
+            class="border rounded-xl p-4 md:p-5 mb-6 bg-gray-50 shadow-sm"
           >
-            <div class="flex justify-between items-center mb-4">
-              <h2 class="text-lg font-semibold text-gray-800">
+            <div
+              class="flex flex-col md:flex-row md:justify-between md:items-center mb-4 gap-3"
+            >
+              <h2
+                class="text-lg font-semibold text-gray-800 text-center md:text-left"
+              >
                 📂 Session {{ sIndex + 1 }}
               </h2>
-              <div class="flex gap-2">
+
+              <div class="flex flex-wrap justify-center md:justify-end gap-2">
                 <button
                   @click="addQuestion(session)"
                   class="bg-blue-500 text-white px-3 py-1.5 rounded text-sm shadow"
@@ -262,7 +292,7 @@ onMounted(fetchSurvey);
               class="w-full border rounded-lg p-2.5 mb-3 focus:ring focus:ring-blue-200"
             />
 
-            <label class="flex items-center gap-2 mb-4 text-gray-700">
+            <label class="flex flex-wrap items-center gap-2 mb-4 text-gray-700">
               <input
                 type="checkbox"
                 v-model="session.allow_multiple"
@@ -275,11 +305,16 @@ onMounted(fetchSurvey);
             <div
               v-for="(question, qIndex) in session.questions"
               :key="qIndex"
-              class="border rounded-lg bg-white py-10 px-4 mb-4 shadow-sm relative"
+              class="border rounded-lg bg-white py-8 px-4 mb-4 shadow-sm relative"
             >
-              <div class="grid w-full grid-cols-2 gap-3 pb-3">
-                <p class="font-semibold">Pertanyaan {{ qIndex + 1 }}</p>
-                <div class="grid grid-cols-2 gap-4">
+              <div
+                class="flex flex-col sm:flex-row sm:justify-between sm:items-center pb-3 gap-2"
+              >
+                <p class="font-semibold text-center sm:text-left">
+                  Pertanyaan {{ qIndex + 1 }}
+                </p>
+
+                <div class="flex flex-wrap justify-center sm:justify-end gap-2">
                   <button
                     @click="duplicateQuestion(session, question)"
                     title="Duplikat"
@@ -290,7 +325,7 @@ onMounted(fetchSurvey);
                   <button
                     @click="removeQuestion(session, qIndex)"
                     title="Hapus"
-                    class="bg-red-500 text-white px-1 py-1.5 rounded text-sm shadow"
+                    class="bg-red-500 text-white px-2 py-1.5 rounded text-sm shadow"
                   >
                     🗑 Hapus
                   </button>
@@ -328,7 +363,7 @@ onMounted(fetchSurvey);
                 <div
                   v-for="(opt, oIndex) in question.QuestionOptions"
                   :key="oIndex"
-                  class="flex gap-2 mb-2"
+                  class="flex gap-2 mb-2 flex-wrap"
                 >
                   <input
                     v-model="opt.option_text"
@@ -390,7 +425,7 @@ onMounted(fetchSurvey);
                     <div
                       v-for="(opt, soIndex) in sub.QuestionOptions"
                       :key="soIndex"
-                      class="flex gap-2 mb-2"
+                      class="flex gap-2 mb-2 flex-wrap"
                     >
                       <input
                         v-model="opt.option_text"
@@ -425,18 +460,27 @@ onMounted(fetchSurvey);
 
           <button
             @click="addSession"
-            class="bg-purple-600 text-white px-4 py-2 rounded-lg shadow mb-4"
+            class="bg-purple-600 text-white px-4 py-2 rounded-lg shadow mb-6 w-full md:w-auto"
           >
             + Tambah Session
           </button>
-
-          <div class="flex justify-end">
-            <button
-              @click="saveSurvey"
-              class="bg-green-600 text-white px-6 py-2 rounded-lg shadow-md"
-            >
-              💾 Simpan Perubahan
-            </button>
+          <div class="flex md:justify-end gap-3">
+            <div class="flex justify-center md:justify-end">
+              <button
+                @click="saveSurvey"
+                class="bg-green-600 text-white px-6 py-2 rounded-lg shadow-md w-full md:w-auto"
+              >
+                💾 Simpan Perubahan
+              </button>
+            </div>
+            <div class="flex justify-center md:justify-end">
+              <button
+                @click="back"
+                class="bg-red-600 text-white px-6 py-2 rounded-lg shadow-md w-full md:w-auto"
+              >
+                ❌ Batal
+              </button>
+            </div>
           </div>
         </div>
       </div>

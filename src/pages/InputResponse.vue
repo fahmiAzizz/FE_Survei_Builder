@@ -3,6 +3,15 @@ import { ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import axios from "axios";
 import MainLayout from "../layout/MainLayout.vue";
+import Swal from "sweetalert2";
+import {
+  showLoading,
+  showSuccess,
+  showError,
+  handleApiError,
+} from "../utils/swal.js"; // pastikan path sesuai
+
+const apiUrl = import.meta.env.VITE_API_URL;
 
 const route = useRoute();
 const router = useRouter();
@@ -10,24 +19,16 @@ const surveiId = route.params.id;
 
 const loading = ref(false);
 const survey = ref(null);
-
-const responden = ref({
-  name: "",
-  email: "",
-  address: "",
-});
-
 const answers = ref([]); // untuk semua sesi
 
 const fetchSurvey = async () => {
   try {
     loading.value = true;
-    const res = await axios.get(
-      `https://be-survei-builder-dlkz.vercel.app/survei/${surveiId}`,
-      {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      }
-    );
+    showLoading("Memuat survei...");
+
+    const res = await axios.get(`${apiUrl}survei/${surveiId}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    });
 
     const formattedSurvey = {
       id: res.data.id,
@@ -62,7 +63,7 @@ const fetchSurvey = async () => {
           id: s.id,
           name: s.name,
           order: s.order,
-          allow_multiple: s.allow_multiple || false, // 🆕 ambil field baru
+          allow_multiple: s.allow_multiple || false,
           questions: rootQuestions.sort((a, b) => a.order - b.order),
         };
       }),
@@ -70,7 +71,6 @@ const fetchSurvey = async () => {
 
     survey.value = formattedSurvey;
 
-    // Siapkan jawaban untuk setiap session
     const flatten = (qs) =>
       qs.flatMap((q) => [
         q,
@@ -90,14 +90,15 @@ const fetchSurvey = async () => {
         ],
       };
     });
+
+    Swal.close(); // tutup loading
   } catch (err) {
-    console.error("Gagal memuat survei:", err);
+    handleApiError(err, "Gagal memuat survei");
   } finally {
     loading.value = false;
   }
 };
 
-// 🆕 Tambahkan set jawaban baru di session
 const addAnswerSet = (sessionId) => {
   const sessionAnswer = answers.value.find((s) => s.session_id === sessionId);
   if (!sessionAnswer) return;
@@ -127,12 +128,6 @@ const removeAnswerSet = (sessionId, index) => {
 
 const submitResponse = async () => {
   try {
-    if (!responden.value.name || !responden.value.email) {
-      alert("Nama dan email wajib diisi!");
-      return;
-    }
-
-    // Validasi pertanyaan kosong
     for (const s of answers.value) {
       for (const set of s.sets) {
         const kosong = set.find((a) =>
@@ -141,8 +136,10 @@ const submitResponse = async () => {
             : !a.answer_text
         );
         if (kosong) {
-          alert("Masih ada pertanyaan yang belum dijawab!");
-          return;
+          return showError(
+            "Gagal!",
+            "Masih ada pertanyaan yang belum dijawab!"
+          );
         }
       }
     }
@@ -150,38 +147,36 @@ const submitResponse = async () => {
     const allAnswers = answers.value.flatMap((s) =>
       s.sets.flatMap((set, setIndex) =>
         set.map((a) => ({
-          session_id: s.session_id, // 🆕 tambahkan agar tahu asal session
+          session_id: s.session_id,
           question_id: a.question_id,
           answer_text: Array.isArray(a.answer_text)
             ? a.answer_text.join(", ")
             : a.answer_text,
-          group_index: s.allow_multiple ? setIndex + 1 : 1, // 🧠 kalau session tidak multiple, tetap 1
+          group_index: s.allow_multiple ? setIndex + 1 : 1,
         }))
       )
     );
 
     const payload = {
       survei_id: surveiId,
-      responden: responden.value,
       submitted_by: Number(localStorage.getItem("id")) || 1,
       answers: allAnswers,
     };
 
-    await axios.post(
-      "https://be-survei-builder-dlkz.vercel.app/survei/input",
-      payload,
-      {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      }
-    );
+    showLoading("Mengirim jawaban...");
+    await axios.post(`${apiUrl}survei/input`, payload, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    });
 
-    alert("Respon survei berhasil dikirim!");
+    Swal.close();
+    await showSuccess("Berhasil!", "Respon survei berhasil dikirim!");
     router.push(`/survei/${surveiId}`);
   } catch (err) {
-    console.error("Gagal mengirim respon:", err);
-    alert("Terjadi kesalahan saat mengirim respon");
+    handleApiError(err, "Gagal mengirim respon survei");
   }
 };
+
+const back = () => router.push(`/survei/${surveiId}`);
 
 onMounted(fetchSurvey);
 </script>
@@ -190,29 +185,9 @@ onMounted(fetchSurvey);
   <MainLayout>
     <div v-if="loading" class="text-gray-500">Memuat survei...</div>
 
-    <div v-else-if="survey" class="p-6 bg-white rounded-xl shadow-md">
-      <h1 class="text-2xl font-bold mb-4">{{ survey.name }}</h1>
-      <p class="text-gray-700 mb-6">{{ survey.description }}</p>
-
-      <!-- Data Responden -->
-      <div class="mb-6">
-        <h2 class="text-xl font-semibold mb-2">Data Responden</h2>
-        <input
-          v-model="responden.name"
-          placeholder="Nama lengkap"
-          class="w-full border rounded p-2 mb-2"
-        />
-        <input
-          v-model="responden.email"
-          placeholder="Email"
-          class="w-full border rounded p-2 mb-2"
-        />
-        <textarea
-          v-model="responden.address"
-          placeholder="Alamat"
-          class="w-full border rounded p-2"
-        ></textarea>
-      </div>
+    <div v-else-if="survey" class="p-2 md:p-6 bg-white rounded-xl shadow-md">
+      <h1 class="text-2xl font-bold mb-4 text-center">{{ survey.name }}</h1>
+      <p class="text-gray-700 mb-6 text-center">{{ survey.description }}</p>
 
       <!-- Sessions -->
       <div
@@ -237,7 +212,7 @@ onMounted(fetchSurvey);
         >
           <div class="flex justify-between items-center mb-2">
             <span class="font-semibold text-gray-700"
-              >Kode {{ setIndex + 1 }}</span
+              >Session {{ sIndex + 1 }}</span
             >
             <button
               v-if="session.allow_multiple && setIndex > 0"
@@ -448,22 +423,27 @@ onMounted(fetchSurvey);
           </div>
         </div>
 
-        <!-- Tombol tambah kode -->
         <button
           v-if="session.allow_multiple"
           @click="addAnswerSet(session.id)"
-          class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
+          class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-sm"
         >
           + Tambah Kode Jawaban
         </button>
       </div>
 
-      <button
-        @click="submitResponse"
-        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-      >
-        Kirim Jawaban
-      </button>
+      <div class="flex justify-center justify-items-center gap-2">
+        <button
+          @click="submitResponse"
+          class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+        >
+          Kirim Jawaban
+        </button>
+
+        <button @click="back" class="bg-red-600 text-white px-4 py-2 rounded">
+          ❌ Batal
+        </button>
+      </div>
     </div>
 
     <div v-else class="text-gray-500">Survei tidak ditemukan.</div>

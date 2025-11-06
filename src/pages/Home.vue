@@ -5,6 +5,8 @@ import MainLayout from "../layout/MainLayout.vue";
 import CreateSurveyForm from "./CreateSurveyForm.vue";
 import { useRouter } from "vue-router";
 
+const apiUrl = import.meta.env.VITE_API_URL;
+
 const router = useRouter();
 const showForm = ref(false);
 const loading = ref(false);
@@ -14,14 +16,11 @@ const surveiList = ref([]);
 const fetchSurvei = async () => {
   try {
     loading.value = true;
-    const res = await axios.get(
-      "https://be-survei-builder-dlkz.vercel.app/survei",
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      }
-    );
+    const res = await axios.get(`${apiUrl}survei`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
     surveiList.value = res.data;
   } catch (error) {
     console.error("Gagal mengambil survei:", error);
@@ -37,7 +36,6 @@ const handleSurveyCreated = async () => {
   await fetchSurvei();
 };
 
-// Navigasi ke detail survei
 const goToDetail = (id) => {
   router.push(`/survei/${id}`);
 };

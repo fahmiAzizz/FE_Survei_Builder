@@ -3,6 +3,10 @@ import { ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import axios from "axios";
 import MainLayout from "../layout/MainLayout.vue";
+import Swal from "sweetalert2";
+import { showLoading, showSuccess, handleApiError } from "../utils/swal.js"; // pastikan path sesuai dengan file alerts kamu
+
+const apiUrl = import.meta.env.VITE_API_URL;
 
 const route = useRoute();
 const router = useRouter();
@@ -11,26 +15,20 @@ const responseId = route.params.responseId;
 
 const loading = ref(false);
 const survey = ref(null);
-const responden = ref({ name: "", email: "", address: "" });
 const answers = ref([]);
 
 const fetchData = async () => {
   try {
     loading.value = true;
+    showLoading("Memuat data survei...");
 
     const [surveyRes, responseRes] = await Promise.all([
-      axios.get(
-        `https://be-survei-builder-dlkz.vercel.app/survei/${surveiId}`,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        }
-      ),
-      axios.get(
-        `https://be-survei-builder-dlkz.vercel.app/survei/responseById/${responseId}`,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        }
-      ),
+      axios.get(`${apiUrl}survei/${surveiId}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      }),
+      axios.get(`${apiUrl}survei/responseById/${responseId}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      }),
     ]);
 
     const formattedSurvey = {
@@ -69,7 +67,6 @@ const fetchData = async () => {
     survey.value = formattedSurvey;
 
     const responseData = responseRes.data.data;
-    responden.value = { ...responseData.responden };
 
     const flatten = (qs) =>
       qs.flatMap((q) => [
@@ -90,8 +87,10 @@ const fetchData = async () => {
             : existing?.answer_text || "",
       };
     });
+
+    Swal.close(); // tutup loading
   } catch (err) {
-    console.error("❌ Gagal memuat data:", err);
+    handleApiError(err, "Gagal memuat data survei");
   } finally {
     loading.value = false;
   }
@@ -100,7 +99,6 @@ const fetchData = async () => {
 const updateResponse = async () => {
   try {
     const payload = {
-      responden: responden.value,
       answers: answers.value.map((a) => ({
         question_id: a.question_id,
         answer_text: Array.isArray(a.answer_text)
@@ -109,19 +107,20 @@ const updateResponse = async () => {
       })),
     };
 
-    await axios.put(
-      `https://be-survei-builder-dlkz.vercel.app/survei/response/edit/${responseId}`,
-      payload,
-      { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
-    );
+    showLoading("Menyimpan perubahan...");
+    await axios.put(`${apiUrl}survei/response/edit/${responseId}`, payload, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    });
 
-    alert("✅ Response berhasil diperbarui!");
+    Swal.close();
+    await showSuccess("Berhasil!", "Response berhasil diperbarui!");
     router.push(`/survei/${surveiId}`);
   } catch (error) {
-    console.error("❌ Gagal update response:", error);
-    alert("Terjadi kesalahan saat memperbarui response");
+    handleApiError(error, "Gagal memperbarui response");
   }
 };
+
+const back = () => router.push(`/survei/${surveiId}`);
 
 onMounted(fetchData);
 </script>
@@ -130,30 +129,10 @@ onMounted(fetchData);
   <MainLayout>
     <div v-if="loading" class="text-gray-500">Memuat data...</div>
 
-    <div v-else-if="survey" class="p-6 bg-white rounded-xl shadow-md">
-      <h1 class="text-2xl font-bold mb-4">
-        ✏️ Edit Response - {{ responden.name }}
-      </h1>
-      <p class="text-gray-600 mb-6">{{ survey.description }}</p>
-
-      <!-- Data Responden -->
-      <div class="mb-6">
-        <h2 class="text-xl font-semibold mb-2">Data Responden</h2>
-        <input
-          v-model="responden.name"
-          placeholder="Nama lengkap"
-          class="w-full border rounded p-2 mb-2"
-        />
-        <input
-          v-model="responden.email"
-          placeholder="Email"
-          class="w-full border rounded p-2 mb-2"
-        />
-        <textarea
-          v-model="responden.address"
-          placeholder="Alamat"
-          class="w-full border rounded p-2"
-        ></textarea>
+    <div v-else-if="survey" class="p-3 md:p-6 bg-white rounded-xl shadow-md">
+      <div class="text-gray-600 text-center py-3">
+        <p class="font-bold text-2xl md:text-4xl">{{ survey.name }}</p>
+        <p class="">{{ survey.description }}</p>
       </div>
 
       <!-- Pertanyaan -->
@@ -357,7 +336,10 @@ onMounted(fetchData);
         </div>
       </div>
 
-      <div class="flex justify-end gap-3">
+      <div class="flex justify-between gap-3 px-3">
+        <button @click="back" class="bg-red-600 text-white px-4 py-2 rounded">
+          ❌ Batal
+        </button>
         <button
           @click="updateResponse"
           class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded"

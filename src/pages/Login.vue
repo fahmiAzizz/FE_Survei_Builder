@@ -37,6 +37,8 @@
 import { ref } from "vue";
 import { useAuthStore } from "../store/auth";
 import { useRouter } from "vue-router";
+import Swal from "sweetalert2";
+import { showLoading, showSuccess, handleApiError } from "../utils/swal.js";
 
 const email = ref("");
 const password = ref("");
@@ -45,11 +47,15 @@ const authStore = useAuthStore();
 
 const handleLogin = async () => {
   try {
+    showLoading("Sedang memproses login...");
+
     await authStore.loginPeneliti(email.value, password.value);
+    Swal.close();
+    await showSuccess("Berhasil Login!", "Selamat datang kembali 👋");
+
     router.push("/Home");
   } catch (error) {
-    alert("Login gagal. Periksa email dan password.");
-    console.log(error);
+    handleApiError(error, "Login Gagal");
   }
 };
 </script>

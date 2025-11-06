@@ -1,6 +1,15 @@
 <script setup>
 import { ref } from "vue";
 import axios from "axios";
+import Swal from "sweetalert2";
+import {
+  showLoading,
+  showSuccess,
+  showConfirm,
+  handleApiError,
+} from "../utils/swal.js"; // pastikan path sesuai dengan project kamu
+
+const apiUrl = import.meta.env.VITE_API_URL;
 
 const emit = defineEmits(["close", "created"]);
 
@@ -12,7 +21,7 @@ const form = ref({
     {
       name: "",
       order: 1,
-      allow_multiple: false, // 🆕 ditambahkan
+      allow_multiple: false,
       questions: [
         {
           question_text: "",
@@ -31,7 +40,7 @@ const addSession = () => {
   form.value.sessions.push({
     name: "",
     order: form.value.sessions.length + 1,
-    allow_multiple: false, // 🆕 ditambahkan di session baru
+    allow_multiple: false,
     questions: [
       {
         question_text: "",
@@ -45,17 +54,16 @@ const addSession = () => {
   });
 };
 
-const removeSession = (sIndex) => {
-  if (
-    confirm(
-      "Yakin ingin menghapus sesi ini beserta semua pertanyaan di dalamnya?"
-    )
-  ) {
+const removeSession = async (sIndex) => {
+  const result = await showConfirm(
+    "Yakin ingin menghapus sesi ini beserta semua pertanyaan di dalamnya?"
+  );
+  if (result.isConfirmed) {
     form.value.sessions.splice(sIndex, 1);
+    showSuccess("Sesi dihapus", "Sesi dan pertanyaan berhasil dihapus.");
   }
 };
 
-// ➕ Tambah pertanyaan
 const addQuestion = (sessionIndex) => {
   form.value.sessions[sessionIndex].questions.push({
     question_text: "",
@@ -102,10 +110,8 @@ const removeSubQuestion = (sessionIndex, questionIndex, subIndex) => {
 const duplicateQuestion = (sessionIndex, questionIndex) => {
   const questionToCopy =
     form.value.sessions[sessionIndex].questions[questionIndex];
-  const cloned = JSON.parse(JSON.stringify(questionToCopy)); // deep copy
-
+  const cloned = JSON.parse(JSON.stringify(questionToCopy));
   cloned.order = form.value.sessions[sessionIndex].questions.length + 1;
-
   form.value.sessions[sessionIndex].questions.splice(
     questionIndex + 1,
     0,
@@ -115,18 +121,17 @@ const duplicateQuestion = (sessionIndex, questionIndex) => {
 
 const createSurvey = async () => {
   try {
-    const res = await axios.post(
-      "https://be-survei-builder-dlkz.vercel.app/survei",
-      form.value,
-      {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      }
-    );
-    alert("Survei berhasil dibuat!");
+    showLoading("Menyimpan survei...");
+
+    const res = await axios.post(`${apiUrl}survei`, form.value, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    });
+
+    Swal.close();
+    await showSuccess("Survei berhasil dibuat!", "Data survei telah disimpan.");
     emit("created", res.data);
   } catch (err) {
-    console.error(err);
-    alert("Gagal membuat survei.");
+    handleApiError(err, "Gagal membuat survei");
   }
 };
 </script>
@@ -168,9 +173,9 @@ const createSurvey = async () => {
           v-model="s.name"
           placeholder="Nama sesi"
           class="w-full border rounded p-2 mb-2"
+          required
         />
 
-        <!-- 🆕 Toggle untuk allow_multiple -->
         <label class="flex items-center space-x-2 mb-3">
           <input type="checkbox" v-model="s.allow_multiple" />
           <span>Izinkan pengisian berulang (multiple entries)</span>
@@ -181,7 +186,6 @@ const createSurvey = async () => {
           :key="qIndex"
           class="border-t pt-3 mt-3 relative"
         >
-          <!-- Tombol hapus dan duplikasi -->
           <div class="absolute top-1 right-1 flex gap-2 text-sm">
             <button
               @click="duplicateQuestion(sIndex, qIndex)"
@@ -204,6 +208,7 @@ const createSurvey = async () => {
             v-model="q.question_text"
             placeholder="Tulis pertanyaan"
             class="w-full border rounded p-2 mb-2"
+            required
           />
 
           <label>Jenis Pertanyaan:</label>

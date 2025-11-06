@@ -3,7 +3,15 @@ import { ref, onMounted } from "vue";
 import axios from "axios";
 import { useRoute, useRouter } from "vue-router";
 import MainLayout from "../layout/MainLayout.vue";
+import Swal from "sweetalert2";
+import {
+  showLoading,
+  showSuccess,
+  showConfirm,
+  handleApiError,
+} from "../utils/swal.js";
 
+const apiUrl = import.meta.env.VITE_API_URL;
 const route = useRoute();
 const router = useRouter();
 const surveyId = route.params.id;
@@ -16,20 +24,19 @@ const showResponses = ref(false);
 const fetchSurvey = async () => {
   try {
     loading.value = true;
-    const res = await axios.get(
-      `https://be-survei-builder-dlkz.vercel.app/survei/${surveyId}`,
-      {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      }
-    );
+    showLoading("Memuat survei...");
+    const res = await axios.get(`${apiUrl}survei/${surveyId}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    });
 
-    // ✅ Pastikan struktur SubQuestions masuk
     survey.value = {
       ...res.data,
       sessions: res.data.Sessions || [],
     };
+
+    Swal.close();
   } catch (error) {
-    console.error("Gagal memuat survei:", error);
+    handleApiError(error, "Gagal memuat survei");
   } finally {
     loading.value = false;
   }
@@ -39,62 +46,73 @@ const fetchResponses = async () => {
   try {
     showResponses.value = !showResponses.value;
     if (showResponses.value) {
-      const res = await axios.get(
-        `https://be-survei-builder-dlkz.vercel.app/survei/response/${surveyId}`,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        }
-      );
+      showLoading("Memuat responses...");
+      const res = await axios.get(`${apiUrl}survei/response/${surveyId}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
       responses.value = res.data.data || [];
+      Swal.close();
     }
   } catch (error) {
-    console.error("Gagal memuat responses:", error);
+    handleApiError(error, "Gagal memuat responses");
   }
 };
 
 const deleteSurvey = async () => {
-  if (confirm("Yakin ingin menghapus survei ini?")) {
-    try {
-      await axios.delete(
-        `https://be-survei-builder-dlkz.vercel.app/survei/${surveyId}`,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        }
-      );
-      alert("✅ Survei berhasil dihapus!");
-      router.push("/home");
-    } catch (error) {
-      console.error("Gagal menghapus survei:", error);
-      alert("❌ Gagal menghapus survei");
-    }
+  const confirmed = await showConfirm(
+    "Yakin ingin menghapus survei ini?",
+    "Tindakan ini tidak dapat dibatalkan.",
+    "Ya, hapus",
+    "Batal"
+  );
+  if (!confirmed) return;
+
+  try {
+    showLoading("Menghapus survei...");
+    await axios.delete(`${apiUrl}survei/${surveyId}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    });
+    Swal.close();
+    showSuccess("Berhasil!", "Survei berhasil dihapus!");
+    router.push("/home");
+  } catch (error) {
+    handleApiError(error, "Gagal menghapus survei");
   }
 };
 
 const convertToExcel = async () => {
-  if (confirm("Konversi semua response survei ini ke Excel?")) {
-    try {
-      const res = await axios.post(
-        `https://be-survei-builder-dlkz.vercel.app/survei/response/convert/${surveyId}`,
-        {},
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-          responseType: "blob",
-        }
-      );
+  const confirmed = await showConfirm(
+    "Konversi semua response survei ini ke Excel?",
+    "File akan diunduh ke perangkatmu.",
+    "Ya, konversi",
+    "Batal"
+  );
+  if (!confirmed) return;
 
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `survey_${surveyId}_responses.xlsx`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      alert("✅ Berhasil dikonversi ke Excel!");
-    } catch (error) {
-      console.error("Gagal konversi survei:", error);
-      alert("❌ Gagal konversi survei ke Excel.");
-    }
+  try {
+    showLoading("Mengonversi ke Excel...");
+    const res = await axios.post(
+      `${apiUrl}survei/response/convert/${surveyId}`,
+      {},
+      {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        responseType: "blob",
+      }
+    );
+
+    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `survey_${surveyId}_responses.xlsx`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+
+    Swal.close();
+    showSuccess("Berhasil!", "Data berhasil dikonversi ke Excel!");
+  } catch (error) {
+    handleApiError(error, "Gagal mengonversi survei ke Excel");
   }
 };
 
@@ -103,20 +121,24 @@ const goToEditResponse = (responseId) => {
 };
 
 const deleteResponse = async (responseId) => {
-  if (confirm("Yakin ingin menghapus response ini?")) {
-    try {
-      await axios.delete(
-        `https://be-survei-builder-dlkz.vercel.app/survei/response/delete/${responseId}`,
-        {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-        }
-      );
-      alert("✅ Response berhasil dihapus!");
-      fetchResponses(); // refresh list
-    } catch (error) {
-      console.error("❌ Gagal menghapus response:", error);
-      alert("Gagal menghapus response.");
-    }
+  const confirmed = await showConfirm(
+    "Yakin ingin menghapus response ini?",
+    "Tindakan ini tidak bisa dibatalkan.",
+    "Ya, hapus",
+    "Batal"
+  );
+  if (!confirmed) return;
+
+  try {
+    showLoading("Menghapus response...");
+    await axios.delete(`${apiUrl}survei/response/delete/${responseId}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    });
+    Swal.close();
+    showSuccess("Berhasil!", "Response berhasil dihapus!");
+    fetchResponses();
+  } catch (error) {
+    handleApiError(error, "Gagal menghapus response");
   }
 };
 
@@ -131,12 +153,16 @@ onMounted(fetchSurvey);
   <MainLayout>
     <div v-if="loading" class="text-gray-500">Memuat survei...</div>
 
-    <div v-else-if="survey" class="p-6 bg-white rounded-xl shadow-md">
+    <div v-else-if="survey" class="p-2 md:p-6 bg-white rounded-xl shadow-md">
       <!-- Header -->
-      <div class="flex justify-between items-center mb-4">
-        <h1 class="text-2xl font-bold text-indigo-700">{{ survey.name }}</h1>
+      <div
+        class="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-3"
+      >
+        <h1 class="text-3xl md:text-4xl font-semibold text-indigo-700">
+          {{ survey.name }}
+        </h1>
 
-        <div class="space-x-3 space-y-3">
+        <div class="flex flex-wrap justify-start md:justify-end gap-2">
           <button
             @click="goToInput"
             class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded"
@@ -253,18 +279,10 @@ onMounted(fetchSurvey);
           class="border rounded-lg p-4 mb-6 shadow-md bg-gray-50"
         >
           <div class="flex justify-between items-center mb-2">
-            <h3 class="font-semibold text-lg text-gray-800">
-              🧍‍♂️ {{ resp.responden.name }} ({{ resp.responden.email }})
-            </h3>
             <span class="text-sm text-gray-500">
               🕒 {{ new Date(resp.submitted_at).toLocaleString("id-ID") }}
             </span>
           </div>
-
-          <p class="text-sm text-gray-600 mb-2">
-            📍 {{ resp.responden.address }}
-          </p>
-
           <p class="text-sm text-gray-700 mb-3">
             🧑‍🔬 Dikirim oleh: <strong>{{ resp.submitted_by_name }}</strong>
           </p>
