@@ -7,7 +7,7 @@ import {
   showSuccess,
   showConfirm,
   handleApiError,
-} from "../utils/swal.js"; // pastikan path sesuai dengan project kamu
+} from "../utils/swal.js";
 
 const apiUrl = import.meta.env.VITE_API_URL;
 
@@ -58,7 +58,7 @@ const removeSession = async (sIndex) => {
   const result = await showConfirm(
     "Yakin ingin menghapus sesi ini beserta semua pertanyaan di dalamnya?"
   );
-  if (result.isConfirmed) {
+  if (result == true) {
     form.value.sessions.splice(sIndex, 1);
     showSuccess("Sesi dihapus", "Sesi dan pertanyaan berhasil dihapus.");
   }

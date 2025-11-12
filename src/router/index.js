@@ -9,7 +9,7 @@ import { useAuthStore } from "../store/auth";
 import EditResponse from "../pages/EditResponse.vue";
 
 const routes = [
-  { path: "/", redirect: "/home" },
+  { path: "/", redirect: "/login" },
   { path: "/home", component: Home, meta: { requiresAuth: true } },
   { path: "/login", component: Login },
   { path: "/register", component: Register },
@@ -45,7 +45,6 @@ const router = createRouter({
   routes,
 });
 
-// 🔒 Proteksi halaman yang butuh login
 router.beforeEach((to) => {
   const auth = useAuthStore();
   const token = auth.token || localStorage.getItem("token");

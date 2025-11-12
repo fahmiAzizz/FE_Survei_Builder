@@ -4,7 +4,12 @@ import { useRoute, useRouter } from "vue-router";
 import axios from "axios";
 import MainLayout from "../layout/MainLayout.vue";
 import Swal from "sweetalert2";
-import { showSuccess, showLoading, handleApiError } from "../utils/swal.js"; // pastikan path sesuai
+import {
+  showLoading,
+  showSuccess,
+  showConfirm,
+  handleApiError,
+} from "../utils/swal.js";
 
 const apiUrl = import.meta.env.VITE_API_URL;
 const route = useRoute();
@@ -19,7 +24,6 @@ const survey = ref({
   sessions: [],
 });
 
-// 🧭 Fetch data survei
 const fetchSurvey = async () => {
   try {
     loading.value = true;
@@ -76,7 +80,6 @@ const fetchSurvey = async () => {
   }
 };
 
-// ✏️ CRUD Session & Question
 const addSession = () => {
   survey.value.sessions.push({
     id: null,
@@ -88,13 +91,13 @@ const addSession = () => {
   });
 };
 
-const removeSession = (sIndex) => {
-  if (
-    confirm(
-      "Yakin ingin menghapus sesi ini beserta semua pertanyaan di dalamnya?"
-    )
-  ) {
-    survey.value.sessions.splice(sIndex, 1);
+const removeSession = async (sIndex) => {
+  const result = await showConfirm(
+    "Yakin ingin menghapus sesi ini beserta semua pertanyaan di dalamnya?"
+  );
+  if (result == true) {
+    form.value.sessions.splice(sIndex, 1);
+    showSuccess("Sesi dihapus", "Sesi dan pertanyaan berhasil dihapus.");
   }
 };
 
@@ -136,17 +139,22 @@ const removeOption = (question, index) => {
   question.QuestionOptions.splice(index, 1);
 };
 
-const removeQuestion = (session, qIndex) => {
-  if (
-    confirm("Yakin ingin menghapus pertanyaan ini beserta sub-pertanyaannya?")
-  ) {
+const removeQuestion = async (session, qIndex) => {
+  const result = await showConfirm("Yakin ingin menghapus Pertanyaan ini?");
+  if (result == true) {
     session.questions.splice(qIndex, 1);
+    showSuccess(
+      "Pertanyaan dihapus",
+      "Pertanyaan dan sub-pertanyaan berhasil dihapus."
+    );
   }
 };
 
-const removeSubQuestion = (question, subIndex) => {
-  if (confirm("Hapus sub-pertanyaan ini?")) {
+const removeSubQuestion = async (question, subIndex) => {
+  const result = await showConfirm("Yakin ingin menghapus sub-pertanyaan ini?");
+  if (result == true) {
     question.subQuestions.splice(subIndex, 1);
+    showSuccess("Pertanyaan dihapus", "Sub-pertanyaan berhasil dihapus.");
   }
 };
 
@@ -163,7 +171,6 @@ const duplicateQuestion = (session, question) => {
   session.questions.push(clone);
 };
 
-// 💾 Simpan survei
 const saveSurvey = async () => {
   try {
     showLoading("Menyimpan survei...");
@@ -231,7 +238,6 @@ onMounted(fetchSurvey);
         </div>
 
         <div v-else>
-          <!-- Nama & Deskripsi -->
           <div class="space-y-4 mb-6">
             <div>
               <label class="block font-semibold mb-1 text-gray-700"

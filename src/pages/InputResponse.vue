@@ -9,7 +9,7 @@ import {
   showSuccess,
   showError,
   handleApiError,
-} from "../utils/swal.js"; // pastikan path sesuai
+} from "../utils/swal.js";
 
 const apiUrl = import.meta.env.VITE_API_URL;
 
@@ -19,7 +19,7 @@ const surveiId = route.params.id;
 
 const loading = ref(false);
 const survey = ref(null);
-const answers = ref([]); // untuk semua sesi
+const answers = ref([]);
 
 const fetchSurvey = async () => {
   try {
@@ -91,7 +91,7 @@ const fetchSurvey = async () => {
       };
     });
 
-    Swal.close(); // tutup loading
+    Swal.close();
   } catch (err) {
     handleApiError(err, "Gagal memuat survei");
   } finally {
@@ -119,7 +119,6 @@ const addAnswerSet = (sessionId) => {
   sessionAnswer.sets.push(newSet);
 };
 
-// 🆕 Hapus set jawaban tertentu
 const removeAnswerSet = (sessionId, index) => {
   const sessionAnswer = answers.value.find((s) => s.session_id === sessionId);
   if (!sessionAnswer) return;
